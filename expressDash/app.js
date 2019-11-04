@@ -94,6 +94,20 @@ function getUserRecords(token){
               })
 }
 
+function getMainInfo(token, record, query){
+  return new Promise((resolve, reject)=>{
+        var options = { method: 'GET',
+        url: `https://apis.accela.com/v4/records/${record}/${query}`,
+        headers: {'cache-control': 'no-cache', authorization: token } };
+        request(options,
+          (error, response, body)=> {
+          let info=JSON.parse(response.body).result;
+          resolve({[query]: info});
+          reject(error);
+        });
+  })
+}
+
 
 function getRecordCustomForm(record,token){
   return new Promise((resolve, reject)=>{
@@ -126,7 +140,6 @@ function updateCustomForm(record, fields, token){
 }
 
 function getInspections(record, token){
-  console.log(record)
   return new Promise((resolve, reject)=>{
     var options = { method: 'GET',
     url: `https://apis.accela.com/v4/records/${record}/inspections`,
@@ -157,16 +170,6 @@ function getFees(record, token){
 
 //routes
 
-app.post('/records/inspections',
-  async(req, res)=>{
-    try{
-    const inspections = await(getInspections(req.body.recordId, req.session.token));
-    res.send(inspections);
-    }
-    catch(err){
-      res.send(err)
-    }
-  })
 
   app.post('/records/fees',
     async(req, res)=>{
@@ -182,10 +185,12 @@ app.post('/records/inspections',
 app.post('/authenticate',
     async(req, res)=> {
       try{
-        console.log(req.body)
-        const token=await(getToken(req.body.user, req.body.password));
-        console.log(token)
-        req.session.token=token;
+
+          console.log(req.body)
+          const token=await(getToken(req.body.user, req.body.password));
+          console.log(token)
+          req.session.token=token;
+
         const group=await(Promise.all([getUserInfo(session.token), getUserRecords(session.token)])).then((data)=>{
         console.log(req.session)
         return(data)
@@ -202,6 +207,39 @@ app.post('/authenticate',
 
 
 //recordsInfo
+
+app.post('/main',
+  async(req, res)=>{
+    try{
+      let token= req.session.token;
+      let record= req.body.record
+      const recInfo = await(Promise.all([getMainInfo(token, record,'addresses'), getMainInfo(token, record, 'contacts'), getMainInfo(token, record, 'owners')]))
+      .then((data)=>{
+        return(data)
+        })
+      .catch((err)=>{
+        return(err)
+      })
+      res.send(recInfo);
+    }
+    catch(err){
+      res.send(err)
+    }
+})
+
+
+app.post('/inspections',
+  async(req, res)=>{
+    try{
+      let token= req.session.token;
+      let record= req.body.record
+      const inspections = await(getMainInfo(token, record,'inspections'))
+      res.send(inspections);
+    }
+    catch(err){
+      res.send(err)
+    }
+})
 
 app.post('/recordCustomForm',
 async(req, res)=>{
