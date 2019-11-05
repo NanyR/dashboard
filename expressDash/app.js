@@ -109,18 +109,18 @@ function getMainInfo(token, record, query){
 }
 
 
-function getRecordCustomForm(record,token){
-  return new Promise((resolve, reject)=>{
-    (request.get(`https://apis.accela.com/v4/records/${record}/customForms`,
-      {"headers":{"authorization":token, "cache-control": "no-cache"}},
-      (err, response, bodyResp)=>{
-        const status= response.statusCode;
-        resolve(JSON.parse(response.body));
-        reject(err);
-      }
-    ))
-  })
-}
+// function getRecordCustomForm(record,token){
+//   return new Promise((resolve, reject)=>{
+//     (request.get(`https://apis.accela.com/v4/records/${record}/customForms`,
+//       {"headers":{"authorization":token, "cache-control": "no-cache"}},
+//       (err, response, bodyResp)=>{
+//         const status= response.statusCode;
+//         resolve(JSON.parse(response.body));
+//         reject(err);
+//       }
+//     ))
+//   })
+// }
 
 function updateCustomForm(record, fields, token){
   return new Promise((resolve, reject)=>{
@@ -170,18 +170,6 @@ function getFees(record, token){
 
 //routes
 
-
-  app.post('/records/fees',
-    async(req, res)=>{
-      try{
-      const inspections = await(getFees(req.body.recordId, req.session.token));
-      res.send(inspections);
-      }
-      catch(err){
-        res.send(err)
-      }
-    })
-
 app.post('/authenticate',
     async(req, res)=> {
       try{
@@ -208,7 +196,7 @@ app.post('/authenticate',
 
 //recordsInfo
 
-app.post('/main',
+app.post(['/main', '/record'],
   async(req, res)=>{
     try{
       let token= req.session.token;
@@ -221,6 +209,46 @@ app.post('/main',
         return(err)
       })
       res.send(recInfo);
+    }
+    catch(err){
+      res.send(err)
+    }
+})
+
+app.post('/processingstatusdetails',
+  async(req, res)=>{
+    try{
+      let token= req.session.token;
+      let record= req.body.record
+      const workflowTasks = await(getMainInfo(token, record,'workflowTasks'))
+      res.send(workflowTasks);
+    }
+    catch(err){
+      res.send(err)
+    }
+})
+
+app.post('/documents',
+  async(req, res)=>{
+    try{
+      let token= req.session.token;
+      let record= req.body.record
+      const documents = await(getMainInfo(token, record,'documents'))
+      res.send(documents);
+    }
+    catch(err){
+      res.send(err)
+    }
+})
+
+
+app.post('/fees',
+  async(req, res)=>{
+    try{
+      let token= req.session.token;
+      let record= req.body.record
+      const fees = await(getMainInfo(token, record,'fees'))
+      res.send(fees);
     }
     catch(err){
       res.send(err)
@@ -244,10 +272,10 @@ app.post('/inspections',
 app.post('/recordCustomForm',
 async(req, res)=>{
   try{
-    // console.log(`Record id: ${req.body.recordId}`)
-    const asiInfo= await(getRecordCustomForm(req.body.recordId, req.session.token));
-    // console.log(asiInfo);
-    res.send(asiInfo);
+    let token= req.session.token;
+    let record= req.body.record
+    const customForms = await(getMainInfo(token, record,'customForms'))
+    res.send(customForms);
   }
   catch(err){
     res.send(err)
