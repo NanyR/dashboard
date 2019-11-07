@@ -139,15 +139,23 @@ function updateCustomForm(record, fields, token){
   })
 }
 
-function getInspections(record, token){
+
+function inspReq(body, token){
   return new Promise((resolve, reject)=>{
-    var options = { method: 'GET',
-    url: `https://apis.accela.com/v4/records/${record}/inspections`,
-    headers:{'cache-control': 'no-cache',authorization: token}
-    };
-    request(options, (error, response, body)=> {
-    resolve(body);
-    reject(error);
+    var options={
+      method:'POST',
+      url:`https://apis.accela.com/v4/inspections/schedule`,
+      headers:{
+        'cache-control': 'no-cache',
+        authorization:token,
+        accept: 'application/json'
+      },
+      body:body,
+      json:true};
+      request(options, (err, response, bodyResp)=>{
+        const status=response.statusCode;
+        resolve(respose.body);
+        reject(err)
       })
   })
 }
@@ -228,12 +236,25 @@ app.post('/processingstatusdetails',
     }
 })
 
+app.post('/documentTypes',
+  async(req, res)=>{
+    try{
+      let token= req.session.token;
+      let record= req.body.record
+      const documentTypes = await(getMainInfo(token, record,'documentCategories'))
+      res.send(documentTypes);
+    }
+    catch(err){
+      res.send(err)
+    }
+})
+
 app.post('/documents',
   async(req, res)=>{
     try{
       let token= req.session.token;
       let record= req.body.record
-      const documents = await(getMainInfo(token, record,'documents'))
+      const documents = await(Promise.all([getMainInfo(token, record,'documents'), getMainInfo(token, record, 'documentCategories')]));
       res.send(documents);
     }
     catch(err){
@@ -261,13 +282,27 @@ app.post('/inspections',
     try{
       let token= req.session.token;
       let record= req.body.record
-      const inspections = await(getMainInfo(token, record,'inspections'))
+      const inspections = await(Promise.all([getMainInfo(token, record,'inspections'), getMainInfo(token, record, 'inspectionTypes')]));
       res.send(inspections);
     }
     catch(err){
       res.send(err)
     }
 })
+
+app.post('/inspectionRequest',
+  async(req, res)=>{
+    try{
+      let token= req.session.token;
+      const inspReq= await(scheduleInspection(req.body, token))
+      console.log(inspReq)
+      res.send(inspReq)
+    }
+    catch(err){
+      res.send(err)
+    }
+  }
+)
 
 app.post('/recordCustomForm',
 async(req, res)=>{
