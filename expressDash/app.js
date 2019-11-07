@@ -140,7 +140,8 @@ function updateCustomForm(record, fields, token){
 }
 
 
-function inspReq(body, token){
+function scheduleInspection(body, token){
+  console.log('inside function')
   return new Promise((resolve, reject)=>{
     var options={
       method:'POST',
@@ -148,14 +149,16 @@ function inspReq(body, token){
       headers:{
         'cache-control': 'no-cache',
         authorization:token,
-        accept: 'application/json'
       },
-      body:body,
-      json:true};
-      request(options, (err, response, bodyResp)=>{
-        const status=response.statusCode;
-        resolve(respose.body);
-        reject(err)
+      body:body
+    };
+      request(options,
+        (err, response, bodyResp)=>{
+          let status=response.statusCode;
+          console.log(status);
+          console.log(response);
+          resolve(respose);
+          reject(err)
       })
   })
 }
@@ -181,11 +184,11 @@ function getFees(record, token){
 app.post('/authenticate',
     async(req, res)=> {
       try{
-
-          console.log(req.body)
+          if(req.session.token== undefined){
+            console.log("no token")
           const token=await(getToken(req.body.user, req.body.password));
           console.log(token)
-          req.session.token=token;
+          req.session.token=token;}
 
         const group=await(Promise.all([getUserInfo(session.token), getUserRecords(session.token)])).then((data)=>{
         console.log(req.session)
