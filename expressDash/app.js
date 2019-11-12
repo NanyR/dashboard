@@ -140,9 +140,11 @@ function getMainInfo(token, record, query){
 }
 
 function getWFStatuses(token, record, id){
+  console.log(record)
+  console.log(id)
   return new Promise((resolve, reject)=>{
     var options = { method: 'GET',
-      url: 'https://apis.accela.com/v4/records/VOM-REC19-00000-000J7/workflowTasks/15-30436/statuses',
+      url: `https://apis.accela.com/v4/records/${record}/workflowTasks/${id}/statuses`,
       headers: {
         'cache-control': 'no-cache',
         authorization: token } };
@@ -152,11 +154,32 @@ function getWFStatuses(token, record, id){
           const status= response.statusCode;
           console.log(status);
           let info= JSON.parse(response.body).result;
-          console.log(info);
           resolve(info);
           reject(error)
         });
     })
+}
+
+function updateWFStatus(token, record, wfID, body){
+  return new Promise((resolve, reject)=>{
+    var options = { method: 'PUT',
+    url:`https://apis.accela.com/v4/records/${record}/workflowTasks/${wfID}`,
+    headers:
+     {
+       'cache-control': 'no-cache',
+       authorization:token },
+    body: body };
+
+    request(options,
+      (error, response, body)=> {
+        const status=response.statusCode
+        console.log(status);
+        let info= JSON.parse(response.body).result;
+        resolve(info);
+        reject(error)
+      });
+
+  })
 }
 
 
@@ -364,6 +387,22 @@ app.post('/updateCustomForm',
       res.send(err)
     }
   })
+
+app.post('/updateWFStatus',
+  async(req, res)=>{
+    try{
+      let token=req.session.token;
+      let record=req.body.record;
+      let id=req.body.id;
+      let body=req.body.body
+      const success = await(updateWFStatus(token, record, id, body));
+      res.send(success)
+    }
+    catch(err){
+      res.send(err)
+    }
+  }
+)
 
 app.post('/getWorkflowStatuses',
   async(req, res)=>{
