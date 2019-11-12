@@ -39,24 +39,33 @@ app.all('*',  (req, res, next) => {
   next(); // pass control to the next handler
 });
 
+function getForm(body){
+  console.log(body)
+  return new Promise((resolve, reject)=>{
+    let form = {
+      client_id: body.agency ? keys.dev.AUTH_CLIENT_ID_AGENCY : keys.dev.AUTH_CLIENT_ID,
+      client_secret:body.agency ? keys.dev.AUTH_CLIENT_SECRET_AGENCY : keys.dev.AUTH_CLIENT_SECRET,
+      grant_type:'password',
+      username:body.user,
+      password: body.password,
+      scope:'records inspections documents users addresses reports',
+      agency_name:'VOM',
+      environment:keys.dev.ACCELA_ENV,
+    }
+    if(!body.agency){
+      form.id_provider='citizen'
+    }
+    resolve(form);
+    reject(new Error('Error getting form fields'))
+  })
+}
 
-function getToken(username, password){
-  console.log(username);
-  console.log(password);
+function getToken(form){
+  console.log("need form")
   return new Promise( (resolve, reject)=>{
+    // let form= getForm(body)
     request.post('https://auth.accela.com/oauth2/token',{
-      form:{
-        client_id: keys.dev.AUTH_CLIENT_ID,
-        client_secret:keys.dev.AUTH_CLIENT_SECRET,
-        grant_type:'password',
-        // username:username,
-        username:'acauser3',
-        password: 'accelainc',
-        scope:'records inspections documents users addresses reports',
-        agency_name:'VOM',
-        environment:'SUPP',
-        id_provider:'citizen'
-      }
+      form: form
     },
     (err, response, bodyResp)=>{
           const status= response.statusCode;
@@ -80,6 +89,28 @@ function getUserInfo(token){
         reject(err);
     }
     ))})
+}
+
+function getAgencyUser(token){
+  return new Promise ((resolve, reject)=>{(request.get('https://apis.accela.com/v4/users/me', {"headers":{"authorization":token, "cache-control": "no-cache"}},
+    (err, response, bodyResp)=>{
+        const status= response.statusCode;
+        resolve(JSON.parse(response.body));
+        reject(err);
+    }
+    ))})
+}
+
+function getAgencyRecords(token){
+  return new Promise((resolve,reject)=>{
+                (request.get('https://apis.accela.com/v4/records',
+                    {"headers":{"authorization":token, "cache-control": "no-cache"}},
+                    (err, response, bodyResp)=>{
+                      const status=response.statusCode;
+                      resolve(JSON.parse(response.body));
+                      reject(err);
+                    }))
+              })
 }
 
 function getUserRecords(token){
@@ -108,19 +139,26 @@ function getMainInfo(token, record, query){
   })
 }
 
+function getWFStatuses(token, record, id){
+  return new Promise((resolve, reject)=>{
+    var options = { method: 'GET',
+      url: 'https://apis.accela.com/v4/records/VOM-REC19-00000-000J7/workflowTasks/15-30436/statuses',
+      headers: {
+        'cache-control': 'no-cache',
+        authorization: token } };
 
-// function getRecordCustomForm(record,token){
-//   return new Promise((resolve, reject)=>{
-//     (request.get(`https://apis.accela.com/v4/records/${record}/customForms`,
-//       {"headers":{"authorization":token, "cache-control": "no-cache"}},
-//       (err, response, bodyResp)=>{
-//         const status= response.statusCode;
-//         resolve(JSON.parse(response.body));
-//         reject(err);
-//       }
-//     ))
-//   })
-// }
+        request(options,
+          (error, response, body)=> {
+          const status= response.statusCode;
+          console.log(status);
+          let info= JSON.parse(response.body).result;
+          console.log(info);
+          resolve(info);
+          reject(error)
+        });
+    })
+}
+
 
 function updateCustomForm(record, fields, token){
   return new Promise((resolve, reject)=>{
@@ -163,19 +201,6 @@ function scheduleInspection(body, token){
   })
 }
 
-function getFees(record, token){
-  console.log(record)
-  return new Promise((resolve, reject)=>{
-    var options = { method: 'GET',
-    url: `https://apis.accela.com/v4/records/${record}/fees`,
-    headers:{'cache-control': 'no-cache',authorization: token}
-    };
-    request(options, (error, response, body)=> {
-    resolve(body);
-    reject(error);
-      })
-  })
-}
 
 
 
@@ -183,15 +208,24 @@ function getFees(record, token){
 
 app.post('/authenticate',
     async(req, res)=> {
+
       try{
           if(req.session.token== undefined){
             console.log("no token")
-          const token=await(getToken(req.body.user, req.body.password));
-          console.log(token)
-          req.session.token=token;}
+            let form=await(getForm(req.body))
+            console.log(form)
+            const token=await(getToken(form));
+            console.log(token)
+            req.session.token=token;
+        }
 
-        const group=await(Promise.all([getUserInfo(session.token), getUserRecords(session.token)])).then((data)=>{
-        console.log(req.session)
+        const group=req.body.agency ? await(Promise.all([getAgencyUser(session.token), getAgencyRecords(session.token)]).then((data)=>{
+          return(data)
+          })
+          .catch((err)=>{
+            return(err)
+          })
+          ) : await(Promise.all([getUserInfo(session.token), getUserRecords(session.token)])).then((data)=>{
         return(data)
         })
       .catch((err)=>{
@@ -331,6 +365,20 @@ app.post('/updateCustomForm',
     }
   })
 
+app.post('/getWorkflowStatuses',
+  async(req, res)=>{
+    try{
+      let token= req.session.token;
+      let record= req.body.record;
+      let id= req.body.id;
+      const wfStatuses= await(getWFStatuses(token, record, id));
+      res.send(wfStatuses)
+    }
+    catch(err){
+      res.send(err)
+    }
+  }
+)
 
 // oauth logut
 app.get('/logout', (req, res)=>{
