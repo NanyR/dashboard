@@ -1,4 +1,5 @@
 const express= require("express");
+const mongoose=require('mongoose');
 const bodyParser= require("body-parser");
 var cors = require('cors');
 const request=require('request');
@@ -7,7 +8,13 @@ var cookieParser = require('cookie-parser');
 const session=require("express-session");
 const keys= require('./config/keys.js');
 const app=express();
-//
+
+//mongodb connection
+mongoose.connect("mongodb://localhost:27017/bookworm");
+const db=mongoose.connection;
+//mongo error
+db.on('error', console.error.bind(console, 'connection error:'));
+
 // app.use(cors());
 app.use(bodyParser.json());
 
@@ -31,7 +38,6 @@ app.all('*',  (req, res, next) => {
   if(req.session.page_views){
   req.session.page_views++;
   console.log("You visited this page " + req.session.page_views + " times");
-  // console.log("You visited this page " + req.session.token + " times");
   } else {
   req.session.page_views = 1;
   console.log("Welcome to this page for the first time!");
@@ -63,7 +69,6 @@ function getForm(body){
 function getToken(form){
   console.log("need form")
   return new Promise( (resolve, reject)=>{
-    // let form= getForm(body)
     request.post('https://auth.accela.com/oauth2/token',{
       form: form
     },
@@ -161,20 +166,25 @@ function getWFStatuses(token, record, id){
 }
 
 function updateWFStatus(token, record, wfID, body){
+
   return new Promise((resolve, reject)=>{
     var options = { method: 'PUT',
     url:`https://apis.accela.com/v4/records/${record}/workflowTasks/${wfID}`,
     headers:
      {
        'cache-control': 'no-cache',
-       authorization:token },
-    body: body };
+       authorization:token,
+       'content-type': 'application/json',
+       accept: 'application/json'  },
+       json: true,
+       body: body };
 
     request(options,
       (error, response, body)=> {
         const status=response.statusCode
         console.log(status);
-        let info= JSON.parse(response.body).result;
+        console.log(response.body.result)
+        let info= response.body.result;
         resolve(info);
         reject(error)
       });
@@ -391,6 +401,7 @@ app.post('/updateCustomForm',
 app.post('/updateWFStatus',
   async(req, res)=>{
     try{
+      // console.log(req.body)
       let token=req.session.token;
       let record=req.body.record;
       let id=req.body.id;
@@ -432,17 +443,6 @@ app.get('/logout', (req, res)=>{
     })
   }
 })
-
-
-
-//
-// app.post('/authenticate',(req, resp)=>{
-//   //this must return a promise in order to continue with .then
-//   authenticateAccelaUser()
-//   .then()
-//   .then()
-//   .catch(err)
-// })
 
 
 
