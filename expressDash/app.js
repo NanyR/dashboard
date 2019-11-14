@@ -8,7 +8,7 @@ var cookieParser = require('cookie-parser');
 const session=require("express-session");
 const keys= require('./config/keys.js');
 const app=express();
-
+const User= require('./models/user');
 //mongodb connection
 mongoose.connect("mongodb://localhost:27017/bookworm");
 const db=mongoose.connection;
@@ -46,7 +46,6 @@ app.all('*',  (req, res, next) => {
 });
 
 function getForm(body){
-  console.log(body)
   return new Promise((resolve, reject)=>{
     let form = {
       client_id: body.agency ? keys.dev.AUTH_CLIENT_ID_AGENCY : keys.dev.AUTH_CLIENT_ID,
@@ -67,7 +66,6 @@ function getForm(body){
 }
 
 function getToken(form){
-  console.log("need form")
   return new Promise( (resolve, reject)=>{
     request.post('https://auth.accela.com/oauth2/token',{
       form: form
@@ -78,12 +76,40 @@ function getToken(form){
             let body=JSON.parse(response.body);
             let token= body.access_token;
             session.token=token;
+            console.log(token)
             resolve (token);
           }else {
-          reject(err);}
+            console.log("could not verify user")
+          reject(new Error (err));}
     })
     }
   )
+}
+
+function findOrCreateUser(data){
+  console.log('inside create user')
+  return new Promise((resolve, reject)=>{
+    User.findOne({username:data.user}).then((currentUser)=>{
+      if(currentUser){
+        console.log('exisiting user');
+        resolve(currentUser)
+      }else{
+        console.log('new user')
+        let userData={
+        username: data.user,
+        appType: data.agency ? 'agency' : 'citizen'
+        }
+        User.create(userData, (error, user)=>{
+          if(error){
+            reject (error)
+          }else{
+            console.log('user created');
+            resolve(user)
+          }
+        })
+      }
+    })
+  })
 }
 
 function getUserInfo(token){
@@ -240,36 +266,46 @@ function scheduleInspection(body, token){
 //routes
 
 app.post('/authenticate',
-    async(req, res)=> {
+    async(req, res, next)=> {
+        try{
+            if(req.body.user && req.body.password){
+            if(req.session.token== undefined){
+              console.log("no token")
+              let form=await(getForm(req.body))
+              const token=await(getToken(form));
+              const result= await(findOrCreateUser(req.body));
+              console.log(result)
+              req.session.token=token;
+              res.send(result)
+            }
 
-      try{
-          if(req.session.token== undefined){
-            console.log("no token")
-            let form=await(getForm(req.body))
-            console.log(form)
-            const token=await(getToken(form));
-            console.log(token)
-            req.session.token=token;
+        //   const group=req.body.agency ? await(Promise.all([getAgencyUser(session.token), getAgencyRecords(session.token)]).then((data)=>{
+        //     return(data)
+        //     })
+        //     .catch((err)=>{
+        //       return(err)
+        //     })
+        //     ) : await(Promise.all([getUserInfo(session.token), getUserRecords(session.token)])).then((data)=>{
+        //   return(data)
+        //   })
+        // .catch((err)=>{
+        //   return(err)
+        // })
+        //   res.send(group);
+
+        }else{
+          let err= new Error('Could not find user and/or password');
+          err.status=400;
+          next(err)
         }
-
-        const group=req.body.agency ? await(Promise.all([getAgencyUser(session.token), getAgencyRecords(session.token)]).then((data)=>{
-          return(data)
-          })
-          .catch((err)=>{
-            return(err)
-          })
-          ) : await(Promise.all([getUserInfo(session.token), getUserRecords(session.token)])).then((data)=>{
-        return(data)
-        })
-      .catch((err)=>{
-        return(err)
-      })
-        res.send(group);
-      }
-      catch(err){
-        res.send(err)
-      }
-  })
+    }
+    catch(err){
+      err.message='Server error authenticating user'
+      next(err)
+    }
+      // res.send(result)
+  }
+)
 
 
 //recordsInfo
@@ -444,7 +480,13 @@ app.get('/logout', (req, res)=>{
   }
 })
 
-
+//error handler
+app.use((err, req, res, next)=>{
+  res.status((err.status || 500))
+  res.json({
+    error:err.message
+  })
+})
 
 app.listen(3001,()=>{
   console.log("Listening on port 3001");
