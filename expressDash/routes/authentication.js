@@ -94,6 +94,8 @@ router.post('/accela',
         req.session.token=token;
           try{
             const result= await(findOrCreateUser(req.body));
+            req.session.user=result.username
+            req.session.userId=result.id
             res.send(result)
           }catch(err){
             console.log(err.message)
