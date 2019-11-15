@@ -1,4 +1,5 @@
 const express= require("express");
+const authenticationRoutes=require('./routes/authentication');
 const mongoose=require('mongoose');
 const bodyParser= require("body-parser");
 var cors = require('cors');
@@ -12,8 +13,12 @@ const User= require('./models/user');
 //mongodb connection
 mongoose.connect("mongodb://localhost:27017/bookworm");
 const db=mongoose.connection;
+
 //mongo error
 db.on('error', console.error.bind(console, 'connection error:'));
+db.once('open', () => console.log('connected to the database'));
+// checks if connection with the database is successful
+db.on('error', console.error.bind(console, 'MongoDB connection error:'));
 
 // app.use(cors());
 app.use(bodyParser.json());
@@ -34,6 +39,10 @@ app.use(cors({
     credentials: true // enable set cookie
 }));
 
+//set up routes
+app.use('/auth', authenticationRoutes)
+
+
 app.all('*',  (req, res, next) => {
   if(req.session.page_views){
   req.session.page_views++;
@@ -45,72 +54,7 @@ app.all('*',  (req, res, next) => {
   next(); // pass control to the next handler
 });
 
-function getForm(body){
-  return new Promise((resolve, reject)=>{
-    let form = {
-      client_id: body.agency ? keys.dev.AUTH_CLIENT_ID_AGENCY : keys.dev.AUTH_CLIENT_ID,
-      client_secret:body.agency ? keys.dev.AUTH_CLIENT_SECRET_AGENCY : keys.dev.AUTH_CLIENT_SECRET,
-      grant_type:'password',
-      username:body.user,
-      password: body.password,
-      scope:'records inspections documents users addresses reports',
-      agency_name:'VOM',
-      environment:keys.dev.ACCELA_ENV,
-    }
-    if(!body.agency){
-      form.id_provider='citizen'
-    }
-    resolve(form);
-    reject(new Error('Error getting form fields'))
-  })
-}
 
-function getToken(form){
-  return new Promise( (resolve, reject)=>{
-    request.post('https://auth.accela.com/oauth2/token',{
-      form: form
-    },
-    (err, response, bodyResp)=>{
-          const status= response.statusCode;
-          if(status==200){
-            let body=JSON.parse(response.body);
-            let token= body.access_token;
-            session.token=token;
-            console.log(token)
-            resolve (token);
-          }else {
-            console.log("could not verify user")
-          reject(new Error (err));}
-    })
-    }
-  )
-}
-
-function findOrCreateUser(data){
-  console.log('inside create user')
-  return new Promise((resolve, reject)=>{
-    User.findOne({username:data.user}).then((currentUser)=>{
-      if(currentUser){
-        console.log('exisiting user');
-        resolve(currentUser)
-      }else{
-        console.log('new user')
-        let userData={
-        username: data.user,
-        appType: data.agency ? 'agency' : 'citizen'
-        }
-        User.create(userData, (error, user)=>{
-          if(error){
-            reject (error)
-          }else{
-            console.log('user created');
-            resolve(user)
-          }
-        })
-      }
-    })
-  })
-}
 
 function getUserInfo(token){
   return new Promise ((resolve, reject)=>{(request.get('https://apis.accela.com/v4/citizenaccess/profile', {"headers":{"authorization":token, "cache-control": "no-cache"}},
