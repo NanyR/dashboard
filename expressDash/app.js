@@ -1,6 +1,7 @@
 const express= require("express");
 const authenticationRoutes=require('./routes/authentication');
 const projectsRoutes=require('./routes/projects');
+const recordsRoutes= require('./routes/records');
 const mongoose=require('mongoose');
 const bodyParser= require("body-parser");
 var cors = require('cors');
@@ -43,6 +44,7 @@ app.use(cors({
 //set up routes
 app.use('/auth', authenticationRoutes);
 app.use('/projects', projectsRoutes);
+app.use('/records', recordsRoutes);
 
 
 app.all('*',  (req, res, next) => {

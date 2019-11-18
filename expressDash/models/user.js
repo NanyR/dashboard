@@ -13,10 +13,7 @@ const UserSchema= new mongoose.Schema({
       type:String,
       required:true,
       trim:true
-    },
-    projects:[
-      { type: Schema.Types.ObjectId,
-        ref: 'Project' }]
+    }
   })
 
 

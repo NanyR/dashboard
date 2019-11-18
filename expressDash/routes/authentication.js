@@ -5,6 +5,7 @@ const request=require('request');
 const session=require("express-session");
 const keys= require('../config/keys.js');
 const User= require('../models/user');
+const Project= require('../models/projects');
 
 router.use(cors({
     origin:['http://localhost:3000'],
@@ -82,6 +83,20 @@ function findOrCreateUser(data){
   })
 }
 
+function getUserProjects(id){
+  return new Promise((resolve, reject)=>{
+    Project.find({projectForUser: id}).then((projects)=>{
+      if(!projects){
+        console.log("no projects found for this user")
+        resolve()
+      }else{
+        console.log(projects)
+        resolve(projects);
+      }
+    })
+  })
+}
+
 
 //login route
 
@@ -93,10 +108,13 @@ router.post('/accela',
         const token=await(getToken(form));
         req.session.token=token;
           try{
-            const result= await(findOrCreateUser(req.body));
-            req.session.user=result.username
-            req.session.userId=result.id
-            res.send(result)
+            const userInfo= await(findOrCreateUser(req.body));
+            req.session.user=userInfo.username
+            req.session.userId=userInfo.id
+            req.session.appType=userInfo.appType
+            let _id=userInfo.id
+            const userProjects=await(getUserProjects(_id));
+            res.send({userInfo, userProjects})
           }catch(err){
             console.log(err.message)
             next(err)

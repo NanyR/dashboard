@@ -15,6 +15,7 @@ router.use((req, res, next)=>{
   }
 })
 
+
 router.post('/new',
   (req, res, next)=>{
     console.log(req.body)
@@ -34,36 +35,11 @@ router.post('/new',
             let err= new Error ("Error creating project");
             next(err)
           }else{
-            User.findById(_id).then(user=>{
-              console.log(user.projects)
-            })
-            res.send(project)
+               res.send(project)
             }
         })
-
       }
     })
-    // Projects.findOne({name: req.body.name}).then((project)=>{
-    //   if(project){
-    //     let err= new Error ("Project exists");
-    //     err.status=400
-    //     next(err)
-    //   }else{
-    //     console.log("about to add new project")
-    //     let projectData={
-    //     name: req.body.name,
-    //     projectDescription:req.body.projectDescription ? req.body.projectDescription : ' '
-    //     }
-    //     Projects.create(projectData, (error, project)=>{
-    //       if(error){
-    //         let err= new Error ("Error creating project");
-    //         next(err)
-    //       }else{
-    //         res.send(project)
-    //       }
-    //     })
-    //   }
-    // })
   }
 )
 
