@@ -2,6 +2,40 @@ const express= require('express');
 const router= require('express').Router();
 const Project= require('../models/projects');
 const User= require('../models/user');
+const bodyParser= require("body-parser");
+
+// app.use(cors());
+router.use(bodyParser.json());
+
+
+//middleware
+
+function updateProject(id, records){
+  return new Promise( (resolve, reject)=>{
+    try{
+        const _id=id;
+        Project.findById(_id).then((project)=>{
+          if(!project){
+            next(new Error('Could not find project'));
+          }else{
+            console.log("found project!")
+            let diffRecs=records.filter(rec=> project.records.indexOf(rec) < 0)
+            project.records=[...project.records, ... diffRecs];
+            project.save((err)=>{
+              if(err){
+                reject(new Error("Could not update project"))
+              }else{
+                console.log("Project updated")
+              }
+            })
+            resolve(project.records)
+          }
+        })
+      }catch(err){
+        reject(err)
+    }
+  })
+}
 
 router.use((req, res, next)=>{
   console.log("in projects route")
@@ -45,9 +79,18 @@ router.post('/new',
 
 router.get('/all',
   (req, res, next)=>{
-    Projects.find().then((projects)=>{
+    Projects.find().then((project)=>{
       res.send(projects)
     })
+  }
+)
+
+router.post('/update',
+  async(req, res, next)=>{
+    let id=req.body.projectId;
+    let records=req.body.records;
+    let updates= await(updateProject(id, records));
+    res.send(updates)
   }
 )
 

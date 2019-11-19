@@ -35,21 +35,40 @@ function getMyRecords(query, appType, token){
         reject(err)
       }else{
         console.log(response.statusCode);
-        console.log(JSON.parse(response.body))
-        resolve(body)
+        resolve(JSON.parse(response.body))
       }
     })
   }
 )}
 
+//search records by parameters
+
 router.post('/search',
-  async(req, resp, next)=>{
+  async(req, res, next)=>{
     const token=req.session.token;
     const appType=req.session.appType;
-    const query= req.body.body;
-    console.log(query)
+    const query= req.body;
     const result= await(getMyRecords(query, appType, token));
     res.send(result)
+  }
+)
+
+//get all my records
+router.post('/index',
+  async(req, res, next)=>{
+    const token=req.session.token;
+    const appType=req.session.appType;
+    const result= await(getMyRecords("", appType, token));
+    res.send(result)
+  }
+)
+
+//get info on an array of records
+router.post('/getRecordsInfo',
+  async(req, res, next)=>{
+    let token= req.session.token;
+    let records= req.body.records;
+    console.log(req.body);
   }
 )
 
