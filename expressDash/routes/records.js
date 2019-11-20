@@ -41,6 +41,30 @@ function getMyRecords(query, appType, token){
   }
 )}
 
+
+function getRecordInfo(token, record, query){
+  return new Promise((resolve, reject)=>{
+    var options = { method: 'GET',
+    url: `https://apis.accela.com/v4/records/${record}/${query}`,
+    headers: {
+       'cache-control': 'no-cache',
+       authorization:token }}
+
+    request(options,  (error, response, body)=> {
+      if (error){
+        console.log(response.statusCode)
+        reject(new Error(`Issue getting ${query} for ${record}`))
+      }else{
+        console.log(response.statusCode)
+        console.log(JSON.parse(response.body))
+        resolve(JSON.parse(response.body));
+      }
+    });
+  })
+}
+
+
+
 //search records by parameters
 
 router.post('/search',
@@ -66,9 +90,23 @@ router.post('/index',
 //get info on an array of records
 router.post('/getRecordsInfo',
   async(req, res, next)=>{
-    let token= req.session.token;
-    let records= req.body.records;
-    console.log(req.body);
+    try{
+      const token= req.session.token;
+      let records= req.body.records;
+      console.log(records)
+      const feesPromises=await(records.map((rec)=>getRecordInfo(token, rec, 'fees')))
+      const wfPromises=await(records.map((rec)=>getRecordInfo(token, rec, 'workflowTasks')))
+      const inspPromises=await(records.map((rec)=>getRecordInfo(token, rec, 'inspections')))
+      const fees= await(Promise.all(feesPromises))
+      const wf=await(Promise.all(wfPromises))
+      const insp=await(Promise.all(inspPromises))
+      // const recordsResults= await(handleMultipleRecords(token, records))
+      // console.log(fees);
+      // console.log({fees, wf})
+      res.send({fees, wf, insp})
+    }catch(err){
+      next( new Error('error gettins info for all records'))
+    }
   }
 )
 

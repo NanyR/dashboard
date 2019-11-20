@@ -90,7 +90,6 @@ function getUserProjects(id){
         console.log("no projects found for this user")
         resolve()
       }else{
-        console.log(projects)
         resolve(projects);
       }
     })
