@@ -23,7 +23,7 @@ function getForm(body){
       grant_type:'password',
       username:body.user,
       password: body.password,
-      scope:'records inspections documents users addresses reports',
+      scope:'records inspections documents users addresses reports shoppingcart payments',
       agency_name:keys.dev.ACCELA_AGENCY_NAME,
       environment:keys.dev.ACCELA_ENV,
     }

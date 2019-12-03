@@ -9,7 +9,7 @@ router.use(bodyParser.json());
 
 
 router.use((req, res, next)=>{
-  console.log("in projects route")
+  console.log("in records route")
   console.log(req.session.userId)
   if(req.session.token== undefined){
     let err=new Error("User could not be authenticated");
@@ -52,11 +52,11 @@ function getRecordInfo(token, record, query){
 
     request(options,  (error, response, body)=> {
       if (error){
-        console.log(response.statusCode)
+
         reject(new Error(`Issue getting ${query} for ${record}`))
       }else{
         console.log(response.statusCode)
-        console.log(JSON.parse(response.body))
+
         resolve(JSON.parse(response.body));
       }
     });
@@ -93,16 +93,14 @@ router.post('/getRecordsInfo',
     try{
       const token= req.session.token;
       let records= req.body.records;
-      console.log(records)
+      // console.log(records)
       const feesPromises=await(records.map((rec)=>getRecordInfo(token, rec, 'fees')))
       const wfPromises=await(records.map((rec)=>getRecordInfo(token, rec, 'workflowTasks')))
       const inspPromises=await(records.map((rec)=>getRecordInfo(token, rec, 'inspections')))
       const fees= await(Promise.all(feesPromises))
       const wf=await(Promise.all(wfPromises))
       const insp=await(Promise.all(inspPromises))
-      // const recordsResults= await(handleMultipleRecords(token, records))
-      // console.log(fees);
-      // console.log({fees, wf})
+
       res.send({fees, wf, insp})
     }catch(err){
       next( new Error('error gettins info for all records'))
@@ -114,7 +112,7 @@ router.post('/getRecordsInfo',
 //error handler
 router.use((err, req, res, next)=>{
   res.status((err.status || 500))
-  res.message="Server error with projects"
+  res.message="Server error with records"
   res.json({
     error:err.message
   })
